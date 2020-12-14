@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+	<title>Conversion</title>
+</head>
+<body>
+	<div class="container my-2" id="app">
+		<div class="row">
+			<div class="col-12">
+				<div class="custom-file">
+					<input type="file" class="custom-file-input" id="inputGroupFile01" ref="file" aria-describedby="inputGroupFileAddon01" v-on:change="handleFileUpload" accept=".csv">
+					<label class="custom-file-label" for="inputGroupFile01" v-text="(file) ? file.name : 'Choose CSV'"></label>
+				</div>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col-12 mt-3">
+				<div class="table-responsive">
+					<table class="table table-condensed">
+						<thead>
+							<tr>
+								<th>Index</th>
+								<th>Latitude</th>
+								<th>Longitude</th>
+								<th>Height</th>
+								<th>Point Id</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="p in points">
+								<td v-text="p.index"></td>
+								<td v-text="p.lat"></td>
+								<td v-text="p.long"></td>
+								<td v-text="p.height"></td>
+								<td v-text="p.point_id"></td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+			<div class="col-12 mt-3">
+				<div class="row">
+					<div class="col-12">
+						<button class="btn btn-primary float-right" :disabled="!points.length" @click="convert">Convert</button>
+					</div>
+				</div>
+			</div>
+			<div class="col-12 mt-3">
+				<div class="table-responsive">
+					<table class="table table-condensed">
+						<thead>
+							<tr>
+								<th>Index</th>
+								<th>Latitude</th>
+								<th>Longitude</th>
+								<th>Height</th>
+								<th>Point Id</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="p in cartesian">
+								<td v-text="p.index"></td>
+								<td v-text="p.x"></td>
+								<td v-text="p.y"></td>
+								<td v-text="p.z"></td>
+								<td v-text="p.point_id"></td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+			<div class="col-12 mt-3">
+				<div class="row">
+					<div class="col-12 col-lg-6">
+						<div class="form-group">
+							<label for="model">Choose Model</label>
+							<select v-model="config.model" id="model" class="form-control">
+								<option value="3p">Geocentric 3P</option>
+								<option value="7p">Bursa Wolf 7P</option>
+								<option value="10p">Molodensky Bodekas 10P</option>
+							</select>
+						</div>
+					</div>
+					<div class="col-12 col-lg-6">
+						<div class="form-group">
+							<label for="model">Choose UTM Zone</label>
+							<select v-model="config.zone" id="model" class="form-control">
+								<option value="36">36</option>
+								<option value="37">37</option>
+								<option value="combined">Combined</option>
+							</select>
+						</div>
+					</div>
+					<div class="col-12">
+						<button class="btn btn-primary float-right" :disabled="!cartesian.length" @click="transform">Transform</button>
+					</div>
+				</div>
+			</div>
+			<div class="col-12 mt-3">
+				<div class="table-responsive">
+					<table class="table table-condensed">
+						<thead>
+							<tr>
+								<th>Index</th>
+								<th>Latitude</th>
+								<th>Longitude</th>
+								<th>Height</th>
+								<th>Point Id</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="p in clarke">
+								<td v-text="p.index"></td>
+								<td v-text="p.x"></td>
+								<td v-text="p.y"></td>
+								<td v-text="p.z"></td>
+								<td v-text="p.point_id"></td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	</div>
+	<script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+	<script>
+	window.csvComponent = new Vue({
+		el: '#app',
+		data: {
+			points: [],
+			file: null,
+			config: {model: '10p', zone: 'combined'},
+			cartesian: [],
+			clarke: []
+		},
+		methods: {
+		    handleFileUpload(){
+				this.file = this.$refs.file.files[0];
+				let formData = new FormData();
+	            formData.append('csv_file', this.file);
+		        axios.post('upload-csv', formData, {headers: {'Content-Type': 'multipart/form-data', 'X-CSRFToken': '{{ csrf_token }}'}})
+		        .then((res) => {
+					if (res.data.success){
+						this.points = res.data.points
+					}
+		        })
+		        .catch(function(){
+		          console.log('FAILURE!!');
+		        });
+		    },
+		    convert(){
+				let formData = new FormData();
+				formData.append('configs', JSON.stringify(this.config));
+				formData.append('points', JSON.stringify(this.points));
+		        axios.post('convert', formData, {headers: {'X-CSRFToken': '{{ csrf_token }}'}})
+		        .then((res) => {
+					if (res.data.success){
+						this.cartesian = res.data.cartesian
+					}
+		        })
+		        .catch(function(){
+		          console.log('FAILURE!!');
+		        });
+		    },
+		    transform(){
+				let formData = new FormData();
+				formData.append('configs', JSON.stringify(this.config));
+				formData.append('points', JSON.stringify(this.points));
+				formData.append('cartesian', JSON.stringify(this.cartesian));
+		        axios.post('transform', formData, {headers: {'X-CSRFToken': '{{ csrf_token }}'}})
+		        .then((res) => {
+					if (res.data.success){
+						this.clarke = res.data.clarke
+					}
+		        })
+		        .catch(function(){
+		          console.log('FAILURE!!');
+		        });
+		    }
+ 		}
+	})
+	</script>	
+</body>
+</html>
