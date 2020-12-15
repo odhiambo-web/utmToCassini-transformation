@@ -1,8 +1,9 @@
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
-from .utils import getSettings
-from .converter import Converter
+from .utils import getSettings, getTransformationParameters
+from .converter import Converter, Geographic, Cassini
 import json
+from .utm import from_latlon
 
 def index(request):
 	return render(request, 'convert/index.html')
@@ -61,3 +62,41 @@ def transform(request):
 	results = conversion.transform()
 
 	return JsonResponse({'success': True, 'clarke': results})
+
+def geographic(request):
+	results = []
+	if "GET" == request.method:
+		return render(request, "convert/index.html")
+	
+	clarke = json.loads(request.POST.get('clarke'))
+
+	conversion = Geographic(clarke, getSettings())
+	results = conversion.geographic()
+
+	return JsonResponse({'success': True, 'geographic': results})
+
+def utm(request):
+	results = []
+	if "GET" == request.method:
+		return render(request, "convert/index.html")
+	
+	geographic = json.loads(request.POST.get('geographic'))
+	results = []
+	for p in geographic:
+		utm = from_latlon(p['x'], p['y'])
+		results.append({'index':p['index'], 'x': utm[0], 'y': utm[1], 'point_id': p['point_id']})
+
+	return JsonResponse({'success': True, 'utm': results})
+
+def cassini(request):
+	results = []
+	if "GET" == request.method:
+		return render(request, "convert/index.html")
+	
+	utm = json.loads(request.POST.get('utm'))
+	config = json.loads(request.POST.get('config'))
+
+	conversion = Cassini(utm, config, getTransformationParameters())
+	results = conversion.cassini()
+
+	return JsonResponse({'success': True, 'cassini': results})

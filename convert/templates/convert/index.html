@@ -44,7 +44,7 @@
 			<div class="col-12 mt-3">
 				<div class="row">
 					<div class="col-12">
-						<button class="btn btn-primary float-right" :disabled="!points.length" @click="convert">Convert</button>
+						<button class="btn btn-primary float-right" :disabled="!points.length" @click="convert">Convert to Cartesian</button>
 					</div>
 				</div>
 			</div>
@@ -54,9 +54,9 @@
 						<thead>
 							<tr>
 								<th>Index</th>
-								<th>Latitude</th>
-								<th>Longitude</th>
-								<th>Height</th>
+								<th>X</th>
+								<th>Y</th>
+								<th>Z</th>
 								<th>Point Id</th>
 							</tr>
 						</thead>
@@ -95,9 +95,36 @@
 						</div>
 					</div>
 					<div class="col-12">
-						<button class="btn btn-primary float-right" :disabled="!cartesian.length" @click="transform">Transform</button>
+						<button class="btn btn-primary float-right" :disabled="!cartesian.length" @click="transform">Transform to clarke 1880</button>
 					</div>
 				</div>
+			</div>
+			<div class="col-12 mt-3">
+				<div class="table-responsive">
+					<table class="table table-condensed">
+						<thead>
+							<tr>
+								<th>Index</th>
+								<th>X</th>
+								<th>Y</th>
+								<th>Z</th>
+								<th>Point Id</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="p in clarke">
+								<td v-text="p.index"></td>
+								<td v-text="p.x"></td>
+								<td v-text="p.y"></td>
+								<td v-text="p.z"></td>
+								<td v-text="p.point_id"></td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+			<div class="col-12 mt-3">
+				<button class="btn btn-primary float-right" :disabled="!clarke.length" @click="geographicConversion">Convert (cartesian to geographic)</button>
 			</div>
 			<div class="col-12 mt-3">
 				<div class="table-responsive">
@@ -112,11 +139,76 @@
 							</tr>
 						</thead>
 						<tbody>
-							<tr v-for="p in clarke">
+							<tr v-for="p in geographic">
 								<td v-text="p.index"></td>
 								<td v-text="p.x"></td>
 								<td v-text="p.y"></td>
 								<td v-text="p.z"></td>
+								<td v-text="p.point_id"></td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+			<div class="col-12 mt-3">
+				<button class="btn btn-primary float-right" :disabled="!geographic.length" @click="utmConversion">Convert to UTM</button>
+			</div>
+			<div class="col-12 mt-3">
+				<div class="table-responsive">
+					<table class="table table-condensed">
+						<thead>
+							<tr>
+								<th>Index</th>
+								<th>Easting (X)</th>
+								<th>Northing (Y)</th>
+								<th>Point Id</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="p in utm">
+								<td v-text="p.index"></td>
+								<td v-text="p.x"></td>
+								<td v-text="p.y"></td>
+								<td v-text="p.point_id"></td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+			<div class="col-12 mt-3">
+				<div class="row">
+					<div class="col-12 col-lg-6">
+						<div class="form-group">
+							<label for="model">Choose Sheet</label>
+							<select v-model.number="config.sheet" id="model" class="form-control">
+								<option v-for="n in 25" :value="n" v-text="`148/1/${n}`"></option>
+							</select>
+						</div>
+					</div>
+					<div class="col-12 col-lg-6">
+						<div class="col-12">
+							<button class="btn btn-primary float-right" :disabled="!utm.length" @click="cassiniConversion">UTM to Cassini</button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="col-12 mt-3">
+				<div class="table-responsive">
+					<table class="table table-condensed">
+						<thead>
+							<tr>
+								<th>Index</th>
+								<th>X</th>
+								<th>Y</th>
+								<th>Point Id</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="p in cassini">
+								<td v-text="p.index"></td>
+								<td v-text="p.x"></td>
+								<td v-text="p.y"></td>
 								<td v-text="p.point_id"></td>
 							</tr>
 						</tbody>
@@ -133,9 +225,12 @@
 		data: {
 			points: [],
 			file: null,
-			config: {model: '10p', zone: 'combined'},
+			config: {model: '10p', zone: 'combined', sheet: 1},
 			cartesian: [],
-			clarke: []
+			clarke: [],
+			geographic: [],
+			utm: [],
+			cassini: []
 		},
 		methods: {
 		    handleFileUpload(){
@@ -180,7 +275,47 @@
 		        .catch(function(){
 		          console.log('FAILURE!!');
 		        });
-		    }
+		    },
+			geographicConversion(){
+				let formData = new FormData();
+				formData.append('clarke', JSON.stringify(this.clarke));
+		        axios.post('geographic', formData, {headers: {'X-CSRFToken': '{{ csrf_token }}'}})
+		        .then((res) => {
+					if (res.data.success){
+						this.geographic = res.data.geographic
+					}
+		        })
+		        .catch(function(){
+		          console.log('FAILURE!!');
+		        });
+			},
+			utmConversion(){
+				let formData = new FormData();
+				formData.append('geographic', JSON.stringify(this.geographic));
+		        axios.post('utm', formData, {headers: {'X-CSRFToken': '{{ csrf_token }}'}})
+		        .then((res) => {
+					if (res.data.success){
+						this.utm = res.data.utm
+					}
+		        })
+		        .catch(function(){
+		          console.log('FAILURE!!');
+		        });
+			},
+			cassiniConversion(){
+				let formData = new FormData();
+				formData.append('utm', JSON.stringify(this.utm));
+				formData.append('config', JSON.stringify(this.config));
+		        axios.post('cassini', formData, {headers: {'X-CSRFToken': '{{ csrf_token }}'}})
+		        .then((res) => {
+					if (res.data.success){
+						this.cassini = res.data.cassini
+					}
+		        })
+		        .catch(function(){
+		          console.log('FAILURE!!');
+		        });
+			},
  		}
 	})
 	</script>	

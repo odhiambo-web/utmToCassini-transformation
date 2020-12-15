@@ -1,0 +1,12 @@
+#!/bin/bash
+
+DIR=/home/shuleyetu/odhisvenv/odhis
+DJANGO_SETTINGS_MODULE=odhis.settings
+
+cd $DIR
+source ../bin/activate
+
+export DJANGO_SETTINGS_MODULE=$DJANGO_SETTINGS_MODULE
+export PYTHONPATH=$DIR:$PYTHONPATH
+
+exec ../bin/daphne -b 0.0.0.0 -p 8006 --proxy-headers odhis.wsgi:application
